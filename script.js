@@ -355,15 +355,30 @@ class ExtratoManager {
         
         console.log(`🔄 Renderizando ${this.dadosFiltrados.length} registros na tabela`);
         
-        this.dadosFiltrados.forEach(item => {
+        let registrosRenderizados = 0;
+        let registrosBloqueados = 0;
+        
+        this.dadosFiltrados.forEach((item, index) => {
             // 🔒 SEGURANÇA EXTRA: Validar se o registro pertence à unidade do login
             const unidadeItem = item['Unidade'] || item.unidade;
             
+            // DEBUG: Log detalhado para cada registro
+            console.log(`📋 Registro ${index + 1}:`, {
+                unidadeRegistro: unidadeItem,
+                unidadeLogin: this.unidadeDoLogin,
+                aluno: item['Nome do Aluno'] || item.aluno,
+                data: item['Data de Pagamento'] || item.data
+            });
+            
             if (this.unidadeDoLogin && unidadeItem && 
                 unidadeItem.toLowerCase() !== this.unidadeDoLogin.toLowerCase()) {
-                // Registro de outra unidade - pular silenciosamente por segurança
+                // Registro de outra unidade - pular
+                registrosBloqueados++;
+                console.log(`🚫 BLOQUEADO: "${unidadeItem}" ≠ "${this.unidadeDoLogin}"`);
                 return;
             }
+            
+            registrosRenderizados++;
             
             const row = document.createElement('tr');
             row.className = 'fade-in';
@@ -387,6 +402,17 @@ class ExtratoManager {
             
             tableBody.appendChild(row);
         });
+        
+        // 📊 RESUMO DO DEBUG
+        console.log(`📊 RESUMO DA RENDERIZAÇÃO:`);
+        console.log(`   📄 Total recebido: ${this.dadosFiltrados.length}`);
+        console.log(`   ✅ Renderizados: ${registrosRenderizados}`);
+        console.log(`   🚫 Bloqueados: ${registrosBloqueados}`);
+        console.log(`   🔍 Unidade do login: "${this.unidadeDoLogin}"`);
+        
+        if (registrosBloqueados > 0) {
+            console.warn(`⚠️ ATENÇÃO: ${registrosBloqueados} registros foram bloqueados por segurança!`);
+        }
     }
 
     calcularEstatisticas() {
