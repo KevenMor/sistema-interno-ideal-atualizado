@@ -65,13 +65,6 @@ class ExtratoManager {
         // Filtros
         const unidadeSelect = document.getElementById('unidadeSelect');
         unidadeSelect.addEventListener('change', (e) => {
-            // 🔒 SEGURANÇA: Não permitir alteração se há unidade do login
-            if (this.unidadeDoLogin) {
-                console.log('🛡️ BLOQUEADO: Tentativa de alterar unidade rejeitada por segurança');
-                e.target.value = this.unidadeDoLogin; // Forçar voltar para unidade do login
-                return;
-            }
-            
             this.filtros.unidade = e.target.value;
             this.carregarDados();
         });
@@ -130,18 +123,33 @@ class ExtratoManager {
     popularSeletorUnidades() {
         const unidadeSelect = document.getElementById('unidadeSelect');
         
-        // Limpar opções existentes (exceto "Todas")
-        while (unidadeSelect.children.length > 1) {
-            unidadeSelect.removeChild(unidadeSelect.lastChild);
-        }
+        // Limpar todas as opções existentes
+        unidadeSelect.innerHTML = '';
 
-        // Adicionar opções das unidades
-        this.unidades.forEach(unidade => {
+        // 🔒 SEGURANÇA: Se há unidade do login, mostrar APENAS ela
+        if (this.unidadeDoLogin) {
             const option = document.createElement('option');
-            option.value = unidade.codigo;
-            option.textContent = unidade.nome;
+            option.value = this.unidadeDoLogin;
+            option.textContent = this.formatarNomeUnidade(this.unidadeDoLogin);
+            option.selected = true;
             unidadeSelect.appendChild(option);
-        });
+            
+            console.log(`🔒 Lista de unidades limitada a: ${this.formatarNomeUnidade(this.unidadeDoLogin)}`);
+        } else {
+            // Se não há unidade do login, mostrar todas (comportamento original)
+            const todasOption = document.createElement('option');
+            todasOption.value = 'todas';
+            todasOption.textContent = 'Todas as Unidades';
+            unidadeSelect.appendChild(todasOption);
+
+            // Adicionar opções das unidades
+            this.unidades.forEach(unidade => {
+                const option = document.createElement('option');
+                option.value = unidade.codigo;
+                option.textContent = unidade.nome;
+                unidadeSelect.appendChild(option);
+            });
+        }
     }
 
     async carregarDados() {
@@ -273,12 +281,10 @@ class ExtratoManager {
             competencia: ''
         };
 
-        // Resetar campos (exceto unidade que permanece travada)
+        // Resetar campos
         const unidadeSelect = document.getElementById('unidadeSelect');
-        if (this.unidadeDoLogin && unidadeSelect) {
-            unidadeSelect.value = this.unidadeDoLogin;
-        } else {
-            unidadeSelect.value = 'todas';
+        if (unidadeSelect && unidadeSelect.options.length > 0) {
+            unidadeSelect.selectedIndex = 0; // Selecionar a primeira (e única) opção
         }
         
         document.getElementById('competenciaSelect').value = '';
@@ -572,29 +578,6 @@ function setupTabNavigation() {
                             branch.style.color = '#6c757d';
                             branch.style.cursor = 'not-allowed';
                         }
-                    } else if (targetTab === 'statementTab') {
-                        const unidadeSelect = document.getElementById('unidadeSelect');
-                        if (unidadeSelect && !unidadeSelect.disabled) {
-                            // Garantir que a unidade correta esteja selecionada e travada
-                            setTimeout(() => {
-                                const options = unidadeSelect.querySelectorAll('option');
-                                let unitFound = false;
-                                
-                                options.forEach(option => {
-                                    if (option.value.toLowerCase() === selectedUnit.toLowerCase()) {
-                                        unidadeSelect.value = option.value;
-                                        unitFound = true;
-                                    }
-                                });
-                                
-                                unidadeSelect.disabled = true;
-                                unidadeSelect.style.backgroundColor = '#f8f9fa';
-                                unidadeSelect.style.color = '#6c757d';
-                                unidadeSelect.style.cursor = 'not-allowed';
-                                
-                                console.log(`🔒 Campo de extratos reconfigurado e travado: ${selectedUnit}`);
-                            }, 500);
-                        }
                     }
                 }, 100);
             }
@@ -652,53 +635,8 @@ function setupOriginalSystem() {
         configureUnitField('branch', true);           // Aba "Registrar Cobrança"
         configureUnitField('paymentUnit', true);      // Aba "Cadastrar Contas BTG"
         
-        // Para o campo de extratos, também travar com a unidade do login
-        const unidadeSelect = document.getElementById('unidadeSelect');
-        if (unidadeSelect) {
-            // Aguardar o carregamento das unidades e então configurar e travar
-            setTimeout(() => {
-                // Buscar a opção correspondente à unidade (formatação pode ser diferente)
-                const options = unidadeSelect.querySelectorAll('option');
-                let unitFound = false;
-                
-                options.forEach(option => {
-                    if (option.value.toLowerCase() === selectedUnit.toLowerCase()) {
-                        unidadeSelect.value = option.value;
-                        unitFound = true;
-                        console.log(`✅ Unidade selecionada nos extratos: ${selectedUnit}`);
-                    }
-                });
-                
-                // Se não encontrou a unidade exata, criar uma nova opção
-                if (!unitFound) {
-                    const newOption = document.createElement('option');
-                    newOption.value = selectedUnit;
-                    newOption.textContent = formatUnitName(selectedUnit);
-                    newOption.selected = true;
-                    unidadeSelect.appendChild(newOption);
-                }
-                
-                // Travar o campo de extratos também
-                unidadeSelect.disabled = true;
-                unidadeSelect.style.backgroundColor = '#f8f9fa';
-                unidadeSelect.style.color = '#6c757d';
-                unidadeSelect.style.cursor = 'not-allowed';
-                
-                // Adicionar indicador visual
-                const parentDiv = unidadeSelect.parentElement;
-                if (parentDiv && !parentDiv.querySelector('.unit-locked-indicator')) {
-                    const indicator = document.createElement('small');
-                    indicator.className = 'unit-locked-indicator text-muted mt-1';
-                    indicator.innerHTML = `<i class="bi bi-lock-fill"></i> Travado pela unidade do login: <strong>${formatUnitName(selectedUnit)}</strong>`;
-                    indicator.style.display = 'block';
-                    indicator.style.fontSize = '0.85em';
-                    indicator.style.color = '#6c757d';
-                    parentDiv.appendChild(indicator);
-                }
-                
-                console.log(`🔒 Campo de extratos travado para a unidade: ${selectedUnit}`);
-            }, 1000);
-        }
+        // Para o campo de extratos, apenas aguardar inicialização
+        // O ExtratoManager agora gerencia automaticamente a unidade
 
         // Mostrar mensagem informativa para o usuário
         console.log(`🔒 Sistema configurado para a unidade: ${selectedUnit.toUpperCase()}`);
