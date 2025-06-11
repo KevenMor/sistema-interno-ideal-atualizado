@@ -25,7 +25,49 @@ class ExtratoManager {
         console.log('🛡️ SEGURANÇA: Apenas extratos desta unidade serão exibidos.');
         console.log('🔍 Debug - localStorage completo:', localStorage);
         
+        // 🗺️ Configurar mapeamento de unidades
+        this.configurarMapeamentoUnidades();
+        
         this.init();
+    }
+
+    configurarMapeamentoUnidades() {
+        // 🗺️ MAPEAMENTO: Palavra-chave -> possíveis variações no banco
+        this.mapeamentoUnidades = {
+            'aparecidinha': ['aparecidinha', 'ideal aparecidinha'],
+            'vila helena': ['vila helena', 'ideal vila helena'],
+            'vila progresso': ['vila progresso', 'ideal vila progresso'],
+            'julio de mesquita': ['julio de mesquita', 'ideal julio de mesquita', 'julio mesquita'],
+            'vila haro': ['vila haro', 'ideal vila haro'],
+            'coop': ['coop', 'ideal coop']
+        };
+        
+        console.log('🗺️ Mapeamento de unidades configurado:', this.mapeamentoUnidades);
+    }
+
+    // 🔍 FUNÇÃO: Verificar se uma unidade do banco corresponde à unidade do login
+    verificarCorrespondenciaUnidade(unidadeBanco, unidadeLogin) {
+        if (!unidadeBanco || !unidadeLogin) return false;
+        
+        const unidadeBancoLower = unidadeBanco.toLowerCase().trim();
+        const unidadeLoginLower = unidadeLogin.toLowerCase().trim();
+        
+        // 1. Verificação direta
+        if (unidadeBancoLower === unidadeLoginLower) {
+            return true;
+        }
+        
+        // 2. Verificação por mapeamento
+        const variacoesPermitidas = this.mapeamentoUnidades[unidadeLoginLower];
+        if (variacoesPermitidas) {
+            return variacoesPermitidas.some(variacao => 
+                unidadeBancoLower === variacao.toLowerCase()
+            );
+        }
+        
+        // 3. Verificação por palavra-chave (fallback)
+        return unidadeBancoLower.includes(unidadeLoginLower) || 
+               unidadeLoginLower.includes(unidadeBancoLower);
     }
 
     init() {
@@ -370,12 +412,17 @@ class ExtratoManager {
                 data: item['Data de Pagamento'] || item.data
             });
             
-            if (this.unidadeDoLogin && unidadeItem && 
-                unidadeItem.toLowerCase() !== this.unidadeDoLogin.toLowerCase()) {
-                // Registro de outra unidade - pular
-                registrosBloqueados++;
-                console.log(`🚫 BLOQUEADO: "${unidadeItem}" ≠ "${this.unidadeDoLogin}"`);
-                return;
+            // 🔍 NOVA VERIFICAÇÃO: Usar sistema inteligente de correspondência
+            if (this.unidadeDoLogin && unidadeItem) {
+                const pertenceAUnidade = this.verificarCorrespondenciaUnidade(unidadeItem, this.unidadeDoLogin);
+                
+                if (!pertenceAUnidade) {
+                    registrosBloqueados++;
+                    console.log(`🚫 BLOQUEADO: "${unidadeItem}" não corresponde a "${this.unidadeDoLogin}"`);
+                    return;
+                }
+                
+                console.log(`✅ APROVADO: "${unidadeItem}" corresponde a "${this.unidadeDoLogin}"`);
             }
             
             registrosRenderizados++;
