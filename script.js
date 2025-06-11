@@ -527,6 +527,29 @@ function setupTabNavigation() {
                             branch.style.color = '#6c757d';
                             branch.style.cursor = 'not-allowed';
                         }
+                    } else if (targetTab === 'statementTab') {
+                        const unidadeSelect = document.getElementById('unidadeSelect');
+                        if (unidadeSelect && !unidadeSelect.disabled) {
+                            // Garantir que a unidade correta esteja selecionada e travada
+                            setTimeout(() => {
+                                const options = unidadeSelect.querySelectorAll('option');
+                                let unitFound = false;
+                                
+                                options.forEach(option => {
+                                    if (option.value.toLowerCase() === selectedUnit.toLowerCase()) {
+                                        unidadeSelect.value = option.value;
+                                        unitFound = true;
+                                    }
+                                });
+                                
+                                unidadeSelect.disabled = true;
+                                unidadeSelect.style.backgroundColor = '#f8f9fa';
+                                unidadeSelect.style.color = '#6c757d';
+                                unidadeSelect.style.cursor = 'not-allowed';
+                                
+                                console.log(`🔒 Campo de extratos reconfigurado e travado: ${selectedUnit}`);
+                            }, 500);
+                        }
                     }
                 }, 100);
             }
@@ -584,25 +607,58 @@ function setupOriginalSystem() {
         configureUnitField('branch', true);           // Aba "Registrar Cobrança"
         configureUnitField('paymentUnit', true);      // Aba "Cadastrar Contas BTG"
         
-        // Para o campo de extratos, apenas definir como padrão mas permitir alteração
+        // Para o campo de extratos, também travar com a unidade do login
         const unidadeSelect = document.getElementById('unidadeSelect');
         if (unidadeSelect) {
-            // Aguardar o carregamento das unidades e então selecionar a unidade do login
+            // Aguardar o carregamento das unidades e então configurar e travar
             setTimeout(() => {
                 // Buscar a opção correspondente à unidade (formatação pode ser diferente)
                 const options = unidadeSelect.querySelectorAll('option');
+                let unitFound = false;
+                
                 options.forEach(option => {
                     if (option.value.toLowerCase() === selectedUnit.toLowerCase()) {
                         unidadeSelect.value = option.value;
+                        unitFound = true;
                         console.log(`✅ Unidade selecionada nos extratos: ${selectedUnit}`);
                     }
                 });
+                
+                // Se não encontrou a unidade exata, criar uma nova opção
+                if (!unitFound) {
+                    const newOption = document.createElement('option');
+                    newOption.value = selectedUnit;
+                    newOption.textContent = formatUnitName(selectedUnit);
+                    newOption.selected = true;
+                    unidadeSelect.appendChild(newOption);
+                }
+                
+                // Travar o campo de extratos também
+                unidadeSelect.disabled = true;
+                unidadeSelect.style.backgroundColor = '#f8f9fa';
+                unidadeSelect.style.color = '#6c757d';
+                unidadeSelect.style.cursor = 'not-allowed';
+                
+                // Adicionar indicador visual
+                const parentDiv = unidadeSelect.parentElement;
+                if (parentDiv && !parentDiv.querySelector('.unit-locked-indicator')) {
+                    const indicator = document.createElement('small');
+                    indicator.className = 'unit-locked-indicator text-muted mt-1';
+                    indicator.innerHTML = `<i class="bi bi-lock-fill"></i> Travado pela unidade do login: <strong>${formatUnitName(selectedUnit)}</strong>`;
+                    indicator.style.display = 'block';
+                    indicator.style.fontSize = '0.85em';
+                    indicator.style.color = '#6c757d';
+                    parentDiv.appendChild(indicator);
+                }
+                
+                console.log(`🔒 Campo de extratos travado para a unidade: ${selectedUnit}`);
             }, 1000);
         }
 
         // Mostrar mensagem informativa para o usuário
         console.log(`🔒 Sistema configurado para a unidade: ${selectedUnit.toUpperCase()}`);
-        console.log('📌 Os campos de unidade foram travados automaticamente baseados no seu login.');
+        console.log('📌 TODOS os campos de unidade foram travados automaticamente baseados no seu login.');
+        console.log('🛡️ Segurança ativada: Usuário só pode acessar dados da própria unidade.');
     }
     
     // Templates para mensagens
