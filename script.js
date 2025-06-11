@@ -4,8 +4,13 @@ class ExtratoManager {
         this.dadosFiltrados = [];
         this.unidades = [];
         this.competencias = [];
+        
+        // 🔒 SEGURANÇA: Aplicar automaticamente filtro da unidade do login
+        const selectedUnit = localStorage.getItem('selectedUnit');
+        this.unidadeDoLogin = selectedUnit;
+        
         this.filtros = {
-            unidade: 'todas',
+            unidade: selectedUnit || 'todas', // Usar unidade do login por padrão
             dataInicio: '',
             dataFim: '',
             competencia: ''
@@ -14,6 +19,9 @@ class ExtratoManager {
         
         // Base URL da API
         this.API_BASE_URL = '/api';
+        
+        console.log(`🔒 ExtratoManager configurado para unidade: ${this.unidadeDoLogin}`);
+        console.log('🛡️ SEGURANÇA: Apenas extratos desta unidade serão exibidos.');
         
         this.init();
     }
@@ -57,6 +65,13 @@ class ExtratoManager {
         // Filtros
         const unidadeSelect = document.getElementById('unidadeSelect');
         unidadeSelect.addEventListener('change', (e) => {
+            // 🔒 SEGURANÇA: Não permitir alteração se há unidade do login
+            if (this.unidadeDoLogin) {
+                console.log('🛡️ BLOQUEADO: Tentativa de alterar unidade rejeitada por segurança');
+                e.target.value = this.unidadeDoLogin; // Forçar voltar para unidade do login
+                return;
+            }
+            
             this.filtros.unidade = e.target.value;
             this.carregarDados();
         });
@@ -156,10 +171,19 @@ class ExtratoManager {
             console.log('🚀 Carregando dados via API...');
             console.log('📋 Filtros atuais:', this.filtros);
 
+            // 🔒 SEGURANÇA: Forçar sempre o filtro da unidade do login
+            if (this.unidadeDoLogin) {
+                this.filtros.unidade = this.unidadeDoLogin;
+                console.log(`🛡️ FILTRO DE SEGURANÇA: Forçando unidade ${this.unidadeDoLogin}`);
+            }
+
             // Construir parâmetros da query
             const params = new URLSearchParams();
             
-            if (this.filtros.unidade && this.filtros.unidade !== 'todas') {
+            // SEMPRE aplicar filtro da unidade (não permitir "todas" se há unidade do login)
+            if (this.unidadeDoLogin) {
+                params.append('unidade', this.unidadeDoLogin);
+            } else if (this.filtros.unidade && this.filtros.unidade !== 'todas') {
                 params.append('unidade', this.filtros.unidade);
             }
             
@@ -241,20 +265,28 @@ class ExtratoManager {
     }
 
     limparFiltros() {
+        // 🔒 SEGURANÇA: Manter sempre a unidade do login
         this.filtros = {
-            unidade: 'todas',
+            unidade: this.unidadeDoLogin || 'todas', // Não permitir limpar unidade
             dataInicio: '',
             dataFim: '',
             competencia: ''
         };
 
-        // Resetar campos
-        document.getElementById('unidadeSelect').value = 'todas';
+        // Resetar campos (exceto unidade que permanece travada)
+        const unidadeSelect = document.getElementById('unidadeSelect');
+        if (this.unidadeDoLogin && unidadeSelect) {
+            unidadeSelect.value = this.unidadeDoLogin;
+        } else {
+            unidadeSelect.value = 'todas';
+        }
+        
         document.getElementById('competenciaSelect').value = '';
         document.getElementById('dataInicio').value = '';
         document.getElementById('dataFim').value = '';
         document.getElementById('searchInput').value = '';
 
+        console.log(`🔒 Filtros limpos, mas unidade mantida: ${this.unidadeDoLogin}`);
         this.carregarDados();
     }
 
@@ -305,6 +337,14 @@ class ExtratoManager {
         tableBody.innerHTML = '';
         
         this.dadosFiltrados.forEach(item => {
+            // 🔒 SEGURANÇA EXTRA: Validar se o registro pertence à unidade do login
+            const unidadeItem = item['Unidade'] || item.unidade;
+            if (this.unidadeDoLogin && unidadeItem && 
+                unidadeItem.toLowerCase() !== this.unidadeDoLogin.toLowerCase()) {
+                console.log(`🛡️ REGISTRO BLOQUEADO: ${unidadeItem} não corresponde à unidade ${this.unidadeDoLogin}`);
+                return; // Pular este registro por segurança
+            }
+            
             const row = document.createElement('tr');
             row.className = 'fade-in';
             
@@ -380,6 +420,11 @@ class ExtratoManager {
         
         if (this.filtros.unidade !== 'todas') {
             texto += ` - ${this.formatarNomeUnidade(this.filtros.unidade)}`;
+        }
+        
+        // 🔒 Adicionar indicação de segurança se há unidade do login
+        if (this.unidadeDoLogin) {
+            texto += ` 🔒`;
         }
         
         periodoInfo.textContent = texto;
