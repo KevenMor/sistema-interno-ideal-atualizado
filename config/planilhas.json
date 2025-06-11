@@ -1,0 +1,34 @@
+{
+  "planilhas": {
+    "VILA_HELENA": {
+      "id": "1rJAA5f_svrD_j_NAFDFisFsA1CeRGakH-c4yHYm6OFM",
+      "nome": "Vila Helena",
+      "range": "A:F"
+    },
+    "COOP": {
+      "id": "1wdIYUoI_hdzuey4p51EFnQgRG2r0QlhhmnmZbpKtqoE",
+      "nome": "Coop",
+      "range": "A:F"
+    },
+    "APARECIDINHA": {
+      "id": "1bGxiQIi5aB3faiW9US6mOsR-M_KjPiTLaPq15zQBMx8",
+      "nome": "Aparecidinha",
+      "range": "A:F"
+    },
+    "VILA_HARO": {
+      "id": "1o4TQg7jgpbUP6yUBEDN8cL6yXqGm3zawgjqNFQlr0qU",
+      "nome": "Vila Haro",
+      "range": "A:F"
+    },
+    "VILA_PROGRESSO": {
+      "id": "1iysHQKpov_ZTDGtd7p4Qv2cYotnmUZ6fA5tnuHu0RG0",
+      "nome": "Vila Progresso",
+      "range": "A:F"
+    },
+    "JULIO_DE_MESQUITA": {
+      "id": "1FRMHgo95GcZrzmRWnGJc2AfEN_lELfbOQr1r0HzBiiI",
+      "nome": "Julio de Mesquita",
+      "range": "A:F"
+    }
+  }
+}
