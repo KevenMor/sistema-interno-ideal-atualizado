@@ -16,6 +16,7 @@ class ExtratoManager {
             competencia: ''
         };
         this.estatisticas = null;
+        this.isLoading = false; // Flag para evitar múltiplas chamadas
         
         // Base URL da API
         this.API_BASE_URL = '/api';
@@ -154,11 +155,19 @@ class ExtratoManager {
     }
 
     async carregarDados() {
+        // 🛡️ PROTEÇÃO: Evitar múltiplas chamadas simultâneas
+        if (this.isLoading) {
+            console.log('⚠️ Carregamento já em andamento, ignorando nova chamada');
+            return;
+        }
+        
         const refreshBtn = document.getElementById('refreshBtn');
         const loadingSpinner = document.getElementById('loadingSpinner');
         const errorMessage = document.getElementById('errorMessage');
         
         try {
+            this.isLoading = true; // Flag de proteção
+            
             // Mostrar loading
             refreshBtn.disabled = true;
             loadingSpinner.style.display = 'inline-block';
@@ -179,8 +188,6 @@ class ExtratoManager {
 
             console.log('🚀 Carregando dados via API...');
             console.log('📋 Filtros atuais:', this.filtros);
-            console.log('🔍 Debug - Unidade do login:', this.unidadeDoLogin);
-            console.log('🔍 Debug - localStorage selectedUnit:', localStorage.getItem('selectedUnit'));
 
             // 🔒 SEGURANÇA: Forçar sempre o filtro da unidade do login
             if (this.unidadeDoLogin) {
@@ -213,12 +220,9 @@ class ExtratoManager {
             // Fazer chamada para API
             const url = `${this.API_BASE_URL}/extrato?${params.toString()}`;
             console.log('📡 Chamando API:', url);
-            console.log('🔍 Debug - Parâmetros enviados:', Object.fromEntries(params));
             
             const response = await fetch(url);
             const result = await response.json();
-            
-            console.log('🔍 Debug - Resposta da API:', result);
 
             if (!response.ok) {
                 throw new Error(result.message || `Erro HTTP: ${response.status}`);
@@ -231,10 +235,6 @@ class ExtratoManager {
                 this.estatisticas = result.estatisticas || null;
                 
                 console.log(`✅ ${this.dados.length} registros carregados via API`);
-                console.log('🔍 Debug - Primeiro registro (se existir):', this.dados[0]);
-                console.log('🔍 Debug - Unidades encontradas nos dados:', 
-                    [...new Set(this.dados.map(item => item['Unidade'] || item.unidade))]);
-                console.log('📊 Estatísticas:', this.estatisticas);
                 
                 // Renderizar resultados
                 this.renderizarTabela();
@@ -256,9 +256,10 @@ class ExtratoManager {
             console.error('❌ Erro ao carregar dados via API:', error);
             this.showError(`Erro ao carregar dados: ${error.message}`);
         } finally {
-            // Esconder loading
+            // Esconder loading e liberar flag
             refreshBtn.disabled = false;
             loadingSpinner.style.display = 'none';
+            this.isLoading = false; // Liberar flag de proteção
         }
     }
 
@@ -349,18 +350,19 @@ class ExtratoManager {
         table.style.display = 'table';
         noDataMessage.style.display = 'none';
         
+        // Limpar completamente a tabela antes de renderizar
         tableBody.innerHTML = '';
+        
+        console.log(`🔄 Renderizando ${this.dadosFiltrados.length} registros na tabela`);
         
         this.dadosFiltrados.forEach(item => {
             // 🔒 SEGURANÇA EXTRA: Validar se o registro pertence à unidade do login
             const unidadeItem = item['Unidade'] || item.unidade;
-            console.log(`🔍 Debug - Registro: Unidade="${unidadeItem}", LoginUnidade="${this.unidadeDoLogin}"`);
             
-            // TEMPORÁRIO: Desabilitar validação para debug
-            if (false && this.unidadeDoLogin && unidadeItem && 
+            if (this.unidadeDoLogin && unidadeItem && 
                 unidadeItem.toLowerCase() !== this.unidadeDoLogin.toLowerCase()) {
-                console.log(`🛡️ REGISTRO BLOQUEADO: "${unidadeItem}" não corresponde à unidade "${this.unidadeDoLogin}"`);
-                return; // Pular este registro por segurança
+                // Registro de outra unidade - pular silenciosamente por segurança
+                return;
             }
             
             const row = document.createElement('tr');
