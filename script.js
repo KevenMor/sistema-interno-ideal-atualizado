@@ -22,6 +22,7 @@ class ExtratoManager {
         
         console.log(`🔒 ExtratoManager configurado para unidade: ${this.unidadeDoLogin}`);
         console.log('🛡️ SEGURANÇA: Apenas extratos desta unidade serão exibidos.');
+        console.log('🔍 Debug - localStorage completo:', localStorage);
         
         this.init();
     }
@@ -178,6 +179,8 @@ class ExtratoManager {
 
             console.log('🚀 Carregando dados via API...');
             console.log('📋 Filtros atuais:', this.filtros);
+            console.log('🔍 Debug - Unidade do login:', this.unidadeDoLogin);
+            console.log('🔍 Debug - localStorage selectedUnit:', localStorage.getItem('selectedUnit'));
 
             // 🔒 SEGURANÇA: Forçar sempre o filtro da unidade do login
             if (this.unidadeDoLogin) {
@@ -210,9 +213,12 @@ class ExtratoManager {
             // Fazer chamada para API
             const url = `${this.API_BASE_URL}/extrato?${params.toString()}`;
             console.log('📡 Chamando API:', url);
+            console.log('🔍 Debug - Parâmetros enviados:', Object.fromEntries(params));
             
             const response = await fetch(url);
             const result = await response.json();
+            
+            console.log('🔍 Debug - Resposta da API:', result);
 
             if (!response.ok) {
                 throw new Error(result.message || `Erro HTTP: ${response.status}`);
@@ -225,6 +231,9 @@ class ExtratoManager {
                 this.estatisticas = result.estatisticas || null;
                 
                 console.log(`✅ ${this.dados.length} registros carregados via API`);
+                console.log('🔍 Debug - Primeiro registro (se existir):', this.dados[0]);
+                console.log('🔍 Debug - Unidades encontradas nos dados:', 
+                    [...new Set(this.dados.map(item => item['Unidade'] || item.unidade))]);
                 console.log('📊 Estatísticas:', this.estatisticas);
                 
                 // Renderizar resultados
@@ -345,9 +354,12 @@ class ExtratoManager {
         this.dadosFiltrados.forEach(item => {
             // 🔒 SEGURANÇA EXTRA: Validar se o registro pertence à unidade do login
             const unidadeItem = item['Unidade'] || item.unidade;
-            if (this.unidadeDoLogin && unidadeItem && 
+            console.log(`🔍 Debug - Registro: Unidade="${unidadeItem}", LoginUnidade="${this.unidadeDoLogin}"`);
+            
+            // TEMPORÁRIO: Desabilitar validação para debug
+            if (false && this.unidadeDoLogin && unidadeItem && 
                 unidadeItem.toLowerCase() !== this.unidadeDoLogin.toLowerCase()) {
-                console.log(`🛡️ REGISTRO BLOQUEADO: ${unidadeItem} não corresponde à unidade ${this.unidadeDoLogin}`);
+                console.log(`🛡️ REGISTRO BLOQUEADO: "${unidadeItem}" não corresponde à unidade "${this.unidadeDoLogin}"`);
                 return; // Pular este registro por segurança
             }
             
