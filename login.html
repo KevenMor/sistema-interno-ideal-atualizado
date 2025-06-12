@@ -142,6 +142,7 @@
                 <label for="unidade" class="form-label">Unidade</label>
                 <select class="form-select" id="unidade" required>
                     <option value="">Selecione a unidade</option>
+                    <option value="administrador" style="background-color: #dc3545; color: white; font-weight: bold;">🔐 Administrador (Acesso Total)</option>
                     <option value="aparecidinha">Aparecidinha</option>
                     <option value="coop">Coop</option>
                     <option value="julio de mesquita">Julio de Mesquita</option>
@@ -185,6 +186,18 @@
                 localStorage.setItem('isLoggedIn', 'true');
                 localStorage.setItem('userEmail', email);
                 localStorage.setItem('selectedUnit', unidade);
+                
+                // 🔐 ADMINISTRADOR: Definir permissões especiais
+                if (unidade === 'administrador') {
+                    localStorage.setItem('isAdmin', 'true');
+                    localStorage.setItem('adminEmail', email);
+                    console.log('🔐 Login de ADMINISTRADOR realizado com sucesso!');
+                    console.log('🌟 Acesso total concedido a todas as unidades');
+                } else {
+                    localStorage.removeItem('isAdmin');
+                    localStorage.removeItem('adminEmail');
+                }
+                
                 window.location.href = 'index.html';
             })
             .catch((error) => {
