@@ -5,12 +5,23 @@ class ExtratoManager {
         this.unidades = [];
         this.competencias = [];
         
-        // 🔒 SEGURANÇA: Aplicar automaticamente filtro da unidade do login
+        // 🔐 ADMINISTRADOR: Verificar se é acesso administrativo
         const selectedUnit = localStorage.getItem('selectedUnit');
-        this.unidadeDoLogin = selectedUnit;
+        const isAdmin = localStorage.getItem('isAdmin') === 'true';
+        
+        if (isAdmin) {
+            this.isAdmin = true;
+            this.unidadeDoLogin = null; // Administrador não tem restrição de unidade
+            console.log('🔐 ADMINISTRADOR detectado - Acesso TOTAL liberado!');
+            console.log('🌟 Todas as unidades e dados serão visíveis');
+        } else {
+            this.isAdmin = false;
+            this.unidadeDoLogin = selectedUnit;
+            console.log(`🔒 Usuário comum - Limitado à unidade: ${this.unidadeDoLogin}`);
+        }
         
         this.filtros = {
-            unidade: selectedUnit || 'todas', // Usar unidade do login por padrão
+            unidade: this.isAdmin ? 'todas' : (selectedUnit || 'todas'), // Admin pode ver todas por padrão
             dataInicio: '',
             dataFim: '',
             competencia: ''
@@ -21,8 +32,13 @@ class ExtratoManager {
         // Base URL da API
         this.API_BASE_URL = '/api';
         
-        console.log(`🔒 ExtratoManager configurado para unidade: ${this.unidadeDoLogin}`);
-        console.log('🛡️ SEGURANÇA: Apenas extratos desta unidade serão exibidos.');
+        if (this.isAdmin) {
+            console.log('🔐 ExtratoManager configurado para ADMINISTRADOR');
+            console.log('🌟 PERMISSÃO TOTAL: Extratos de todas as unidades serão exibidos');
+        } else {
+            console.log(`🔒 ExtratoManager configurado para unidade: ${this.unidadeDoLogin}`);
+            console.log('🛡️ SEGURANÇA: Apenas extratos desta unidade serão exibidos.');
+        }
         console.log('🔍 Debug - localStorage completo:', localStorage);
         
         // 🗺️ Configurar mapeamento de unidades
@@ -170,8 +186,26 @@ class ExtratoManager {
         // Limpar todas as opções existentes
         unidadeSelect.innerHTML = '';
 
-        // 🔒 SEGURANÇA: Se há unidade do login, mostrar APENAS ela
-        if (this.unidadeDoLogin) {
+        // 🔐 ADMINISTRADOR: Se é admin, mostrar TODAS as unidades
+        if (this.isAdmin) {
+            // Opção "Todas as Unidades" para admin
+            const todasOption = document.createElement('option');
+            todasOption.value = 'todas';
+            todasOption.textContent = '🌟 Todas as Unidades (Admin)';
+            todasOption.selected = true;
+            unidadeSelect.appendChild(todasOption);
+
+            // Adicionar opções das unidades individuais
+            this.unidades.forEach(unidade => {
+                const option = document.createElement('option');
+                option.value = unidade.codigo;
+                option.textContent = unidade.nome;
+                unidadeSelect.appendChild(option);
+            });
+            
+            console.log('🔐 ADMINISTRADOR: Lista completa de unidades disponível');
+        } else if (this.unidadeDoLogin) {
+            // 🔒 USUÁRIO COMUM: Se há unidade do login, mostrar APENAS ela
             const option = document.createElement('option');
             option.value = this.unidadeDoLogin;
             option.textContent = this.formatarNomeUnidade(this.unidadeDoLogin);
@@ -180,7 +214,7 @@ class ExtratoManager {
             
             console.log(`🔒 Lista de unidades limitada a: ${this.formatarNomeUnidade(this.unidadeDoLogin)}`);
         } else {
-            // Se não há unidade do login, mostrar todas (comportamento original)
+            // Fallback: Se não há unidade do login, mostrar todas (comportamento original)
             const todasOption = document.createElement('option');
             todasOption.value = 'todas';
             todasOption.textContent = 'Todas as Unidades';
@@ -231,8 +265,12 @@ class ExtratoManager {
             console.log('🚀 Carregando dados via API...');
             console.log('📋 Filtros atuais:', this.filtros);
 
-            // 🔒 SEGURANÇA: Forçar sempre o filtro da unidade do login
-            if (this.unidadeDoLogin) {
+            // 🔐 ADMINISTRADOR vs 🔒 USUÁRIO COMUM: Aplicar filtros de segurança
+            if (this.isAdmin) {
+                console.log('🔐 ADMINISTRADOR: Sem restrições de unidade aplicadas');
+                console.log('🌟 Carregando dados de TODAS as unidades conforme filtros selecionados');
+            } else if (this.unidadeDoLogin) {
+                // 🔒 SEGURANÇA: Forçar sempre o filtro da unidade do login para usuários comuns
                 this.filtros.unidade = this.unidadeDoLogin;
                 console.log(`🛡️ FILTRO DE SEGURANÇA: Forçando unidade ${this.unidadeDoLogin}`);
             }
@@ -240,8 +278,14 @@ class ExtratoManager {
             // Construir parâmetros da query
             const params = new URLSearchParams();
             
-            // SEMPRE aplicar filtro da unidade (não permitir "todas" se há unidade do login)
-            if (this.unidadeDoLogin) {
+            // 🔐 ADMINISTRADOR: Permitir acesso a todas as unidades
+            // 🔒 USUÁRIO COMUM: SEMPRE aplicar filtro da unidade (não permitir "todas" se há unidade do login)
+            if (this.isAdmin) {
+                // Admin pode escolher qualquer unidade, incluindo "todas"
+                if (this.filtros.unidade && this.filtros.unidade !== 'todas') {
+                    params.append('unidade', this.filtros.unidade);
+                }
+            } else if (this.unidadeDoLogin) {
                 params.append('unidade', this.unidadeDoLogin);
             } else if (this.filtros.unidade && this.filtros.unidade !== 'todas') {
                 params.append('unidade', this.filtros.unidade);
@@ -325,18 +369,37 @@ class ExtratoManager {
     }
 
     limparFiltros() {
-        // 🔒 SEGURANÇA: Manter sempre a unidade do login
-        this.filtros = {
-            unidade: this.unidadeDoLogin || 'todas', // Não permitir limpar unidade
-            dataInicio: '',
-            dataFim: '',
-            competencia: ''
-        };
+        // 🔐 ADMINISTRADOR vs 🔒 USUÁRIO COMUM: Diferentes comportamentos
+        if (this.isAdmin) {
+            // Admin pode limpar todos os filtros, incluindo unidade
+            this.filtros = {
+                unidade: 'todas', // Admin sempre pode ver todas
+                dataInicio: '',
+                dataFim: '',
+                competencia: ''
+            };
+            console.log('🔐 ADMINISTRADOR: Todos os filtros limpos, mantendo acesso total');
+        } else {
+            // 🔒 SEGURANÇA: Manter sempre a unidade do login para usuários comuns
+            this.filtros = {
+                unidade: this.unidadeDoLogin || 'todas', // Não permitir limpar unidade
+                dataInicio: '',
+                dataFim: '',
+                competencia: ''
+            };
+            console.log(`🔒 Filtros limpos, mas unidade mantida: ${this.unidadeDoLogin}`);
+        }
 
         // Resetar campos
         const unidadeSelect = document.getElementById('unidadeSelect');
         if (unidadeSelect && unidadeSelect.options.length > 0) {
-            unidadeSelect.selectedIndex = 0; // Selecionar a primeira (e única) opção
+            if (this.isAdmin) {
+                // Admin: selecionar "Todas as Unidades"
+                unidadeSelect.value = 'todas';
+            } else {
+                // Usuário comum: selecionar a primeira (e única) opção
+                unidadeSelect.selectedIndex = 0;
+            }
         }
         
         document.getElementById('competenciaSelect').value = '';
@@ -344,7 +407,6 @@ class ExtratoManager {
         document.getElementById('dataFim').value = '';
         document.getElementById('searchInput').value = '';
 
-        console.log(`🔒 Filtros limpos, mas unidade mantida: ${this.unidadeDoLogin}`);
         this.carregarDados();
     }
 
@@ -395,37 +457,22 @@ class ExtratoManager {
         // Limpar completamente a tabela antes de renderizar
         tableBody.innerHTML = '';
         
-        console.log(`🔄 Renderizando ${this.dadosFiltrados.length} registros na tabela`);
-        
-        let registrosRenderizados = 0;
-        let registrosBloqueados = 0;
-        
-        this.dadosFiltrados.forEach((item, index) => {
-            // 🔒 SEGURANÇA EXTRA: Validar se o registro pertence à unidade do login
+        this.dadosFiltrados.forEach(item => {
+            // 🔐 ADMINISTRADOR vs 🔒 USUÁRIO COMUM: Diferentes validações de segurança
             const unidadeItem = item['Unidade'] || item.unidade;
             
-            // DEBUG: Log detalhado para cada registro
-            console.log(`📋 Registro ${index + 1}:`, {
-                unidadeRegistro: unidadeItem,
-                unidadeLogin: this.unidadeDoLogin,
-                aluno: item['Nome do Aluno'] || item.aluno,
-                data: item['Data de Pagamento'] || item.data
-            });
-            
-            // 🔍 NOVA VERIFICAÇÃO: Usar sistema inteligente de correspondência
-            if (this.unidadeDoLogin && unidadeItem) {
+            if (this.isAdmin) {
+                // 🔐 ADMINISTRADOR: Sem restrições, pode ver todos os registros
+                console.log(`🔐 Admin processando registro de: ${unidadeItem}`);
+            } else if (this.unidadeDoLogin && unidadeItem) {
+                // 🔒 USUÁRIO COMUM: 🔍 VERIFICAÇÃO INTELIGENTE por palavra-chave
                 const pertenceAUnidade = this.verificarCorrespondenciaUnidade(unidadeItem, this.unidadeDoLogin);
                 
                 if (!pertenceAUnidade) {
-                    registrosBloqueados++;
-                    console.log(`🚫 BLOQUEADO: "${unidadeItem}" não corresponde a "${this.unidadeDoLogin}"`);
-                    return;
+                    console.log(`🚫 Registro bloqueado - Unidade: ${unidadeItem} não corresponde a: ${this.unidadeDoLogin}`);
+                    return; // Pular registros de outras unidades
                 }
-                
-                console.log(`✅ APROVADO: "${unidadeItem}" corresponde a "${this.unidadeDoLogin}"`);
             }
-            
-            registrosRenderizados++;
             
             const row = document.createElement('tr');
             row.className = 'fade-in';
@@ -449,17 +496,6 @@ class ExtratoManager {
             
             tableBody.appendChild(row);
         });
-        
-        // 📊 RESUMO DO DEBUG
-        console.log(`📊 RESUMO DA RENDERIZAÇÃO:`);
-        console.log(`   📄 Total recebido: ${this.dadosFiltrados.length}`);
-        console.log(`   ✅ Renderizados: ${registrosRenderizados}`);
-        console.log(`   🚫 Bloqueados: ${registrosBloqueados}`);
-        console.log(`   🔍 Unidade do login: "${this.unidadeDoLogin}"`);
-        
-        if (registrosBloqueados > 0) {
-            console.warn(`⚠️ ATENÇÃO: ${registrosBloqueados} registros foram bloqueados por segurança!`);
-        }
     }
 
     calcularEstatisticas() {
@@ -515,8 +551,10 @@ class ExtratoManager {
             texto += ` - ${this.formatarNomeUnidade(this.filtros.unidade)}`;
         }
         
-        // 🔒 Adicionar indicação de segurança se há unidade do login
-        if (this.unidadeDoLogin) {
+        // 🔐 Adicionar indicação de acesso administrativo ou segurança por unidade
+        if (this.isAdmin) {
+            texto += ` 🔐 (Admin)`;
+        } else if (this.unidadeDoLogin) {
             texto += ` 🔒`;
         }
         
@@ -674,9 +712,36 @@ function setupTabNavigation() {
 
 // Funcionalidade original do sistema (templates, etc.)
 function setupOriginalSystem() {
-    // Configurar unidades selecionadas no login
+    // 🔐 ADMINISTRADOR vs 🔒 USUÁRIO COMUM: Configurar sistema baseado no tipo de acesso
     const selectedUnit = localStorage.getItem('selectedUnit');
-    if (selectedUnit) {
+    const isAdmin = localStorage.getItem('isAdmin') === 'true';
+    
+    if (isAdmin) {
+        // 🔐 ADMINISTRADOR: Acesso total - não aplicar restrições
+        console.log('🔐 ADMINISTRADOR detectado no sistema principal');
+        console.log('🌟 Configuração de ACESSO TOTAL - sem restrições de unidade');
+        
+        // Mostrar mensagem de administrador
+        const adminIndicator = document.createElement('div');
+        adminIndicator.id = 'admin-indicator';
+        adminIndicator.innerHTML = `
+            <div style="background: linear-gradient(135deg, #dc3545, #c82333); color: white; padding: 8px 16px; border-radius: 6px; text-align: center; margin-bottom: 20px; font-weight: 500; box-shadow: 0 2px 8px rgba(220,53,69,0.3);">
+                🔐 MODO ADMINISTRADOR ATIVO - Acesso Total a Todas as Unidades
+            </div>
+        `;
+        
+        // Inserir indicador após o logo
+        const logoContainer = document.querySelector('.logo-container');
+        if (logoContainer) {
+            logoContainer.parentNode.insertBefore(adminIndicator, logoContainer.nextSibling);
+        }
+        
+    } else if (selectedUnit) {
+        // 🔒 USUÁRIO COMUM: Aplicar restrições de unidade
+        console.log(`🔒 Sistema configurado para a unidade: ${selectedUnit.toUpperCase()}`);
+        console.log('📌 TODOS os campos de unidade foram travados automaticamente baseados no seu login.');
+        console.log('🛡️ Segurança ativada: Usuário só pode acessar dados da própria unidade.');
+        
         // Função para configurar e travar campos de unidade
         function configureUnitField(elementId, shouldDisable = true) {
             const element = document.getElementById(elementId);
@@ -718,17 +783,12 @@ function setupOriginalSystem() {
             return unitNames[unitValue] || unitValue.charAt(0).toUpperCase() + unitValue.slice(1);
         }
 
-        // Configurar todos os campos de unidade
+        // Configurar todos os campos de unidade apenas para usuários comuns
         configureUnitField('branch', true);           // Aba "Registrar Cobrança"
         configureUnitField('paymentUnit', true);      // Aba "Cadastrar Contas BTG"
         
         // Para o campo de extratos, apenas aguardar inicialização
         // O ExtratoManager agora gerencia automaticamente a unidade
-
-        // Mostrar mensagem informativa para o usuário
-        console.log(`🔒 Sistema configurado para a unidade: ${selectedUnit.toUpperCase()}`);
-        console.log('📌 TODOS os campos de unidade foram travados automaticamente baseados no seu login.');
-        console.log('🛡️ Segurança ativada: Usuário só pode acessar dados da própria unidade.');
     }
     
     // Templates para mensagens
@@ -866,6 +926,8 @@ Clique para ativar a conversa!`
             localStorage.removeItem('isLoggedIn');
             localStorage.removeItem('userEmail');
             localStorage.removeItem('selectedUnit');
+            localStorage.removeItem('isAdmin');        // 🔐 Limpar flag de admin
+            localStorage.removeItem('adminEmail');     // 🔐 Limpar email do admin
             window.location.href = 'login.html';
         });
     }
