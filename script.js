@@ -1,4 +1,6 @@
 // 🔐 SISTEMA DE GESTÃO DE USUÁRIOS
+const API_URL = "https://sistema-interno-ideal-atualizado-production.up.railway.app/api";
+
 class UserManager {
     constructor() {
         this.currentUser = null;
@@ -14,7 +16,7 @@ class UserManager {
     // Autenticação via backend
     async login(email, password, selectedUnit) {
         try {
-            const response = await fetch('/api/auth/login', {
+            const response = await fetch(API_URL + '/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
@@ -37,7 +39,7 @@ class UserManager {
     // Obter todos os usuários via backend
     async getAllUsers() {
         try {
-            const response = await fetch('/api/users', {
+            const response = await fetch(API_URL + '/users', {
                 headers: { 'Authorization': `Bearer ${this.token}` }
             });
             const data = await response.json();
@@ -56,7 +58,7 @@ class UserManager {
     // Cadastrar novo usuário via backend
     async createUser(userData) {
         try {
-            const response = await fetch('/api/users', {
+            const response = await fetch(API_URL + '/users', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -79,7 +81,7 @@ class UserManager {
     // Atualizar usuário via backend
     async updateUser(userId, userData) {
         try {
-            const response = await fetch(`/api/users/${userId}`, {
+            const response = await fetch(API_URL + `/users/${userId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -102,7 +104,7 @@ class UserManager {
     // Desativar usuário via backend
     async deactivateUser(userId) {
         try {
-            const response = await fetch(`/api/users/${userId}`, {
+            const response = await fetch(API_URL + `/users/${userId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${this.token}` }
             });
